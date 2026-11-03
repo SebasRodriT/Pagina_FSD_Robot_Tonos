@@ -26,6 +26,8 @@ let oscillator;
 let gainNode;
 let activeCommandButton;
 let commandSession = 0;
+let activePointerId;
+let activeTouchId;
 
 function getFrequency() {
   return Number(numberInput.value);
@@ -190,9 +192,43 @@ async function sendCommand(button) {
 
 function resetCommand() {
   clearCommandState();
+  activePointerId = undefined;
+  activeTouchId = undefined;
   stopTone();
   setPlaybackState(false, "Tono apagado");
   commandStatus.querySelector("span:last-child").textContent = "Esperando un comando";
+}
+
+function stopCommand() {
+  const commandWasActive = Boolean(activeCommandButton);
+  activePointerId = undefined;
+  activeTouchId = undefined;
+  if (!commandWasActive) return;
+  clearCommandState();
+  stopTone();
+  setPlaybackState(false, "Tono detenido");
+  commandStatus.querySelector("span:last-child").textContent = "Esperando un comando";
+}
+
+function handleTouchStart(event) {
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+  if (activeCommandButton) {
+    activeTouchId = touch.identifier;
+    return;
+  }
+
+  event.preventDefault();
+  activeTouchId = touch.identifier;
+  sendCommand(event.currentTarget);
+}
+
+function handleTouchEnd(event) {
+  if (activeTouchId === undefined) return;
+  const touchReleased = Array.from(event.changedTouches).some(
+    (touch) => touch.identifier === activeTouchId,
+  );
+  if (touchReleased) stopCommand();
 }
 
 numberInput.addEventListener("input", () => {
@@ -245,10 +281,34 @@ playButton.addEventListener("click", async () => {
 });
 
 commandButtons.forEach((button) => {
-  button.addEventListener("click", () => sendCommand(button));
+  button.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    event.preventDefault();
+    activePointerId = event.pointerId;
+    if (!activeCommandButton) sendCommand(button);
+  });
+  button.addEventListener("touchstart", handleTouchStart, { passive: false });
+  button.addEventListener("keydown", (event) => {
+    if ((event.code === "Space" || event.code === "Enter") && !activeCommandButton) {
+      event.preventDefault();
+      sendCommand(button);
+    }
+  });
+  button.addEventListener("keyup", (event) => {
+    if (event.code === "Space" || event.code === "Enter") stopCommand();
+  });
 });
 
 resetButton.addEventListener("click", resetCommand);
+
+document.addEventListener("pointerup", (event) => {
+  if (activePointerId === event.pointerId) stopCommand();
+});
+document.addEventListener("pointercancel", (event) => {
+  if (activePointerId === event.pointerId) stopCommand();
+});
+document.addEventListener("touchend", handleTouchEnd, { passive: true });
+document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -256,7 +316,7 @@ document.addEventListener("keydown", (event) => {
   if (target instanceof HTMLElement && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
   if (event.key === "Escape") {
     event.preventDefault();
-    resetCommand();
+    stopCommand();
     return;
   }
   const command = { w: "forward", s: "backward", a: "left", d: "right" }[event.key.toLowerCase()];
@@ -264,6 +324,16 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   const button = commandButtons.find((item) => item.dataset.command === command);
   if (button) sendCommand(button);
+});
+
+document.addEventListener("keyup", (event) => {
+  const command = { w: "forward", s: "backward", a: "left", d: "right" }[event.key.toLowerCase()];
+  if (activeCommandButton?.dataset.command === command) stopCommand();
+});
+
+window.addEventListener("blur", stopCommand);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") stopCommand();
 });
 
 window.addEventListener("resize", drawWaveform);
