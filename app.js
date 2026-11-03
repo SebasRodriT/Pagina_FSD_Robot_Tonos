@@ -17,6 +17,7 @@ const playbackStatus = document.querySelector("#playback-status");
 const commandStatus = document.querySelector("#command-status");
 const audioStatus = document.querySelector("#audio-status");
 const commandButtons = [...document.querySelectorAll(".direction-button")];
+const resetButton = document.querySelector("#reset-command");
 const waveButtons = [...document.querySelectorAll(".wave-option")];
 
 let selectedWave = "sine";
@@ -25,8 +26,6 @@ let oscillator;
 let gainNode;
 let activeCommandButton;
 let commandSession = 0;
-let activePointerId;
-let activeTouchId;
 
 function getFrequency() {
   return Number(numberInput.value);
@@ -152,13 +151,17 @@ function showAudioError(error) {
 function clearCommandState() {
   commandSession += 1;
   activeCommandButton = undefined;
-  commandButtons.forEach((button) => button.classList.remove("is-active"));
+  commandButtons.forEach((button) => {
+    button.classList.remove("is-active");
+    button.setAttribute("aria-pressed", "false");
+  });
   commandStatus.classList.remove("is-active");
 }
 
 async function sendCommand(button) {
   const command = COMMANDS[button.dataset.command];
   if (!command) return;
+  if (activeCommandButton === button) return;
 
   clearCommandState();
   stopTone();
@@ -166,13 +169,17 @@ async function sendCommand(button) {
   activeCommandButton = button;
   const session = ++commandSession;
   button.classList.add("is-active");
+  button.setAttribute("aria-pressed", "true");
   commandStatus.classList.add("is-active");
   commandStatus.querySelector("span:last-child").textContent =
     `Comando: ${command.label} · ${command.frequency} Hz`;
 
   try {
     await ensureAudioContext();
-    if (session === commandSession) createTone(command.frequency, "sine");
+    if (session === commandSession) {
+      createTone(command.frequency, "sine");
+      setPlaybackState(false, `Tono activo · ${command.frequency} Hz`);
+    }
   } catch (error) {
     if (session === commandSession) {
       clearCommandState();
@@ -181,32 +188,11 @@ async function sendCommand(button) {
   }
 }
 
-function stopCommand() {
-  const commandWasActive = Boolean(activeCommandButton);
-  activePointerId = undefined;
-  activeTouchId = undefined;
-  if (!commandWasActive) return;
+function resetCommand() {
   clearCommandState();
   stopTone();
-  commandStatus.querySelector("span:last-child").textContent = "Comando detenido";
-}
-
-function handleTouchStart(event) {
-  if (activeCommandButton) return;
-  const touch = event.changedTouches[0];
-  if (!touch) return;
-
-  event.preventDefault();
-  activeTouchId = touch.identifier;
-  sendCommand(event.currentTarget);
-}
-
-function handleTouchEnd(event) {
-  if (activeTouchId === undefined) return;
-  const touchReleased = Array.from(event.changedTouches).some(
-    (touch) => touch.identifier === activeTouchId,
-  );
-  if (touchReleased) stopCommand();
+  setPlaybackState(false, "Tono apagado");
+  commandStatus.querySelector("span:last-child").textContent = "Esperando un comando";
 }
 
 numberInput.addEventListener("input", () => {
@@ -245,10 +231,7 @@ waveButtons.forEach((button) => {
 
 playButton.addEventListener("click", async () => {
   if (oscillator) {
-    clearCommandState();
-    stopTone();
-    setPlaybackState(false, "Tono detenido");
-    commandStatus.querySelector("span:last-child").textContent = "Esperando un comando";
+    resetCommand();
     return;
   }
   clearCommandState();
@@ -262,37 +245,20 @@ playButton.addEventListener("click", async () => {
 });
 
 commandButtons.forEach((button) => {
-  button.addEventListener("pointerdown", (event) => {
-    if ((event.pointerType === "mouse" && event.button !== 0) || activeCommandButton) return;
-    event.preventDefault();
-    activePointerId = event.pointerId;
-    sendCommand(button);
-  });
-  button.addEventListener("touchstart", handleTouchStart, { passive: false });
-  button.addEventListener("keydown", (event) => {
-    if ((event.code === "Space" || event.code === "Enter") && !activeCommandButton) {
-      event.preventDefault();
-      sendCommand(button);
-    }
-  });
-  button.addEventListener("keyup", (event) => {
-    if (event.code === "Space" || event.code === "Enter") stopCommand();
-  });
+  button.addEventListener("click", () => sendCommand(button));
 });
 
-document.addEventListener("pointerup", (event) => {
-  if (activePointerId === event.pointerId) stopCommand();
-});
-document.addEventListener("pointercancel", (event) => {
-  if (activePointerId === event.pointerId) stopCommand();
-});
-document.addEventListener("touchend", handleTouchEnd, { passive: true });
-document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+resetButton.addEventListener("click", resetCommand);
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
   const target = event.target;
   if (target instanceof HTMLElement && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    resetCommand();
+    return;
+  }
   const command = { w: "forward", s: "backward", a: "left", d: "right" }[event.key.toLowerCase()];
   if (!command) return;
   event.preventDefault();
@@ -300,11 +266,5 @@ document.addEventListener("keydown", (event) => {
   if (button) sendCommand(button);
 });
 
-document.addEventListener("keyup", (event) => {
-  const command = { w: "forward", s: "backward", a: "left", d: "right" }[event.key.toLowerCase()];
-  if (activeCommandButton?.dataset.command === command) stopCommand();
-});
-
-window.addEventListener("blur", stopCommand);
 window.addEventListener("resize", drawWaveform);
 updateFrequency(getFrequency());

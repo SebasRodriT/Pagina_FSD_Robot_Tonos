@@ -141,17 +141,22 @@
 
         <div class="robot-controls">
           <div class="dpad" role="group" aria-label="Controles direccionales del robot">
-            <button class="direction-button dpad-up" type="button" data-command="forward" aria-label="Adelante, 650 Hz" title="Adelante · 650 Hz">
+            <button class="direction-button dpad-up" type="button" data-command="forward" aria-label="Adelante, 650 Hz" aria-pressed="false" title="Adelante · 650 Hz">
               <span class="direction-arrow arrow-up" aria-hidden="true"></span>
             </button>
-            <button class="direction-button dpad-left" type="button" data-command="left" aria-label="Girar a la izquierda, 1250 Hz" title="Izquierda · 1250 Hz">
+            <button class="direction-button dpad-left" type="button" data-command="left" aria-label="Girar a la izquierda, 1250 Hz" aria-pressed="false" title="Izquierda · 1250 Hz">
               <span class="direction-arrow arrow-left" aria-hidden="true"></span>
             </button>
-            <span class="dpad-center" aria-hidden="true"></span>
-            <button class="direction-button dpad-right" type="button" data-command="right" aria-label="Girar a la derecha, 1550 Hz" title="Derecha · 1550 Hz">
+            <button class="dpad-center" id="reset-command" type="button" aria-label="Apagar el tono y restablecer el movimiento" title="Apagar tono">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M20 7v5h-5" />
+                <path d="M20 12a8 8 0 1 1-2.34-5.66L20 9" />
+              </svg>
+            </button>
+            <button class="direction-button dpad-right" type="button" data-command="right" aria-label="Girar a la derecha, 1550 Hz" aria-pressed="false" title="Derecha · 1550 Hz">
               <span class="direction-arrow arrow-right" aria-hidden="true"></span>
             </button>
-            <button class="direction-button dpad-down" type="button" data-command="backward" aria-label="Atrás, 950 Hz" title="Atrás · 950 Hz">
+            <button class="direction-button dpad-down" type="button" data-command="backward" aria-label="Atrás, 950 Hz" aria-pressed="false" title="Atrás · 950 Hz">
               <span class="direction-arrow arrow-down" aria-hidden="true"></span>
             </button>
           </div>
@@ -167,7 +172,7 @@
           <span>Esperando un comando</span>
         </div>
         <p class="compatibility-note">
-          Mantén pulsada la cruceta o W, A, S y D; el tono se detiene al soltar. El robot necesita un receptor compatible.
+          Pulsa una dirección para mantener el tono; usa el botón central para apagarlo. También puedes usar W, A, S y D. El robot necesita un receptor compatible.
         </p>
       </section>
 
