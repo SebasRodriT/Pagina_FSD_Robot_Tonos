@@ -1,6 +1,5 @@
 const MIN_FREQUENCY = 100;
 const MAX_FREQUENCY = 2000;
-const COMMAND_DURATION_MS = 700;
 const COMMANDS = {
   forward: { label: "Adelante", frequency: 650 },
   backward: { label: "Atrás", frequency: 950 },
@@ -24,7 +23,8 @@ let selectedWave = "sine";
 let audioContext;
 let oscillator;
 let gainNode;
-let activeCommandTimer;
+let activeCommandButton;
+let commandSession = 0;
 
 function getFrequency() {
   return Number(numberInput.value);
@@ -99,6 +99,10 @@ async function startTone(frequency, wave = selectedWave) {
   await ensureAudioContext();
   stopTone();
 
+  createTone(frequency, wave);
+}
+
+function createTone(frequency, wave) {
   oscillator = audioContext.createOscillator();
   gainNode = audioContext.createGain();
   oscillator.type = wave;
@@ -144,8 +148,8 @@ function showAudioError(error) {
 }
 
 function clearCommandState() {
-  window.clearTimeout(activeCommandTimer);
-  activeCommandTimer = undefined;
+  commandSession += 1;
+  activeCommandButton = undefined;
   commandButtons.forEach((button) => button.classList.remove("is-active"));
   commandStatus.classList.remove("is-active");
 }
@@ -157,20 +161,29 @@ async function sendCommand(button) {
   clearCommandState();
   stopTone();
   setPlaybackState(false, "Listo para reproducir");
+  activeCommandButton = button;
+  const session = ++commandSession;
+  button.classList.add("is-active");
+  commandStatus.classList.add("is-active");
+  commandStatus.querySelector("span:last-child").textContent =
+    `Comando: ${command.label} · ${command.frequency} Hz`;
+
   try {
-    await startTone(command.frequency, "sine");
-    button.classList.add("is-active");
-    commandStatus.classList.add("is-active");
-    commandStatus.querySelector("span:last-child").textContent =
-      `Comando: ${command.label} · ${command.frequency} Hz`;
-    activeCommandTimer = window.setTimeout(() => {
-      stopTone();
-      clearCommandState();
-      commandStatus.querySelector("span:last-child").textContent = "Comando enviado";
-    }, COMMAND_DURATION_MS);
+    await ensureAudioContext();
+    if (session === commandSession) createTone(command.frequency, "sine");
   } catch (error) {
-    showAudioError(error);
+    if (session === commandSession) {
+      clearCommandState();
+      showAudioError(error);
+    }
   }
+}
+
+function stopCommand() {
+  if (!activeCommandButton) return;
+  clearCommandState();
+  stopTone();
+  commandStatus.querySelector("span:last-child").textContent = "Comando detenido";
 }
 
 numberInput.addEventListener("input", () => {
@@ -209,8 +222,10 @@ waveButtons.forEach((button) => {
 
 playButton.addEventListener("click", async () => {
   if (oscillator) {
+    clearCommandState();
     stopTone();
     setPlaybackState(false, "Tono detenido");
+    commandStatus.querySelector("span:last-child").textContent = "Esperando un comando";
     return;
   }
   clearCommandState();
@@ -224,7 +239,24 @@ playButton.addEventListener("click", async () => {
 });
 
 commandButtons.forEach((button) => {
-  button.addEventListener("click", () => sendCommand(button));
+  button.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || activeCommandButton) return;
+    event.preventDefault();
+    button.setPointerCapture(event.pointerId);
+    sendCommand(button);
+  });
+  button.addEventListener("pointerup", stopCommand);
+  button.addEventListener("pointercancel", stopCommand);
+  button.addEventListener("lostpointercapture", stopCommand);
+  button.addEventListener("keydown", (event) => {
+    if ((event.code === "Space" || event.code === "Enter") && !activeCommandButton) {
+      event.preventDefault();
+      sendCommand(button);
+    }
+  });
+  button.addEventListener("keyup", (event) => {
+    if (event.code === "Space" || event.code === "Enter") stopCommand();
+  });
 });
 
 document.addEventListener("keydown", (event) => {
@@ -238,5 +270,11 @@ document.addEventListener("keydown", (event) => {
   if (button) sendCommand(button);
 });
 
+document.addEventListener("keyup", (event) => {
+  const command = { w: "forward", s: "backward", a: "left", d: "right" }[event.key.toLowerCase()];
+  if (activeCommandButton?.dataset.command === command) stopCommand();
+});
+
+window.addEventListener("blur", stopCommand);
 window.addEventListener("resize", drawWaveform);
 updateFrequency(getFrequency());
