@@ -25,6 +25,8 @@ let oscillator;
 let gainNode;
 let activeCommandButton;
 let commandSession = 0;
+let activePointerId;
+let activeTouchId;
 
 function getFrequency() {
   return Number(numberInput.value);
@@ -180,10 +182,31 @@ async function sendCommand(button) {
 }
 
 function stopCommand() {
-  if (!activeCommandButton) return;
+  const commandWasActive = Boolean(activeCommandButton);
+  activePointerId = undefined;
+  activeTouchId = undefined;
+  if (!commandWasActive) return;
   clearCommandState();
   stopTone();
   commandStatus.querySelector("span:last-child").textContent = "Comando detenido";
+}
+
+function handleTouchStart(event) {
+  if (activeCommandButton) return;
+  const touch = event.changedTouches[0];
+  if (!touch) return;
+
+  event.preventDefault();
+  activeTouchId = touch.identifier;
+  sendCommand(event.currentTarget);
+}
+
+function handleTouchEnd(event) {
+  if (activeTouchId === undefined) return;
+  const touchReleased = Array.from(event.changedTouches).some(
+    (touch) => touch.identifier === activeTouchId,
+  );
+  if (touchReleased) stopCommand();
 }
 
 numberInput.addEventListener("input", () => {
@@ -240,14 +263,12 @@ playButton.addEventListener("click", async () => {
 
 commandButtons.forEach((button) => {
   button.addEventListener("pointerdown", (event) => {
-    if (event.button !== 0 || activeCommandButton) return;
+    if ((event.pointerType === "mouse" && event.button !== 0) || activeCommandButton) return;
     event.preventDefault();
-    button.setPointerCapture(event.pointerId);
+    activePointerId = event.pointerId;
     sendCommand(button);
   });
-  button.addEventListener("pointerup", stopCommand);
-  button.addEventListener("pointercancel", stopCommand);
-  button.addEventListener("lostpointercapture", stopCommand);
+  button.addEventListener("touchstart", handleTouchStart, { passive: false });
   button.addEventListener("keydown", (event) => {
     if ((event.code === "Space" || event.code === "Enter") && !activeCommandButton) {
       event.preventDefault();
@@ -258,6 +279,15 @@ commandButtons.forEach((button) => {
     if (event.code === "Space" || event.code === "Enter") stopCommand();
   });
 });
+
+document.addEventListener("pointerup", (event) => {
+  if (activePointerId === event.pointerId) stopCommand();
+});
+document.addEventListener("pointercancel", (event) => {
+  if (activePointerId === event.pointerId) stopCommand();
+});
+document.addEventListener("touchend", handleTouchEnd, { passive: true });
+document.addEventListener("touchcancel", handleTouchEnd, { passive: true });
 
 document.addEventListener("keydown", (event) => {
   if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
