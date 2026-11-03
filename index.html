@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#101610" />
+    <meta
+      name="description"
+      content="Genera tonos y envía comandos de audio para controlar tu robot."
+    />
+    <title>TonoLab — Control de robot</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" aria-label="TonoLab, inicio">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M4 17h4l3-9 6 17 4-13 3 5h4" />
+            </svg>
+          </span>
+          <span>Tono<span class="brand-accent">Lab</span></span>
+        </a>
+        <span class="connection-status" id="audio-status">
+          <span class="status-dot" aria-hidden="true"></span>
+          Audio listo
+        </span>
+      </header>
+
+      <section class="intro">
+        <p class="eyebrow">GENERADOR DE FRECUENCIAS</p>
+        <h1>Tu robot, <span>al ritmo</span> de tu voz.</h1>
+        <p class="intro-copy">
+          Ajusta un tono o envía comandos de movimiento con una sola pulsación.
+        </p>
+      </section>
+
+      <section class="generator panel" aria-labelledby="generator-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">ESTUDIO DE TONO</p>
+            <h2 id="generator-title">Generador de tonos</h2>
+          </div>
+          <span class="live-badge"><span></span> EN VIVO</span>
+        </div>
+
+        <div class="wave-card" aria-label="Visualización de la onda de sonido">
+          <canvas id="waveform" role="img" aria-label="Onda sinusoidal"></canvas>
+          <div class="wave-caption">
+            <span id="wave-label">ONDA SINUSOIDAL</span>
+            <span class="wave-frequency"><span id="wave-frequency">1550</span> Hz</span>
+          </div>
+        </div>
+
+        <div class="frequency-panel">
+          <div class="frequency-topline">
+            <label for="frequency-range">Frecuencia</label>
+            <span class="frequency-hint">Rango de 100 a 2000 Hz</span>
+          </div>
+          <div class="frequency-adjuster">
+            <button class="round-button" id="decrease-frequency" type="button" aria-label="Disminuir frecuencia">
+              <span aria-hidden="true">−</span>
+            </button>
+            <div class="frequency-value">
+              <input id="frequency-number" type="number" min="100" max="2000" step="1" value="1550" aria-label="Frecuencia en hercios" />
+              <span>Hz</span>
+            </div>
+            <button class="round-button" id="increase-frequency" type="button" aria-label="Aumentar frecuencia">
+              <span aria-hidden="true">+</span>
+            </button>
+          </div>
+          <input id="frequency-range" class="frequency-range" type="range" min="100" max="2000" step="1" value="1550" aria-label="Ajustar frecuencia" />
+          <div class="range-labels"><span>100 Hz</span><span>2000 Hz</span></div>
+        </div>
+
+        <div class="options-grid">
+          <fieldset class="option-group">
+            <legend>Forma de onda</legend>
+            <div class="wave-options">
+              <button class="wave-option is-selected" type="button" data-wave="sine" aria-pressed="true">
+                <svg viewBox="0 0 44 24" aria-hidden="true"><path d="M2 12c5-18 9-18 14 0s9 18 14 0 9-18 12 0" /></svg>
+                <span>Sinusoidal</span>
+              </button>
+              <button class="wave-option" type="button" data-wave="square" aria-pressed="false">
+                <svg viewBox="0 0 44 24" aria-hidden="true"><path d="M2 4h10v16h10V4h10v16h10" /></svg>
+                <span>Cuadrada</span>
+              </button>
+              <button class="wave-option" type="button" data-wave="sawtooth" aria-pressed="false">
+                <svg viewBox="0 0 44 24" aria-hidden="true"><path d="m2 20 20-16v16L42 4v16" /></svg>
+                <span>Diente de sierra</span>
+              </button>
+              <button class="wave-option" type="button" data-wave="triangle" aria-pressed="false">
+                <svg viewBox="0 0 44 24" aria-hidden="true"><path d="m2 12 10-9 10 18 10-18 10 9" /></svg>
+                <span>Triangular</span>
+              </button>
+            </div>
+          </fieldset>
+
+          <div class="option-group preset-group">
+            <label for="tone-preset">Tonos musicales</label>
+            <select id="tone-preset">
+              <option value="custom">Personalizado</option>
+              <option value="261.63">Do 4 — 262 Hz</option>
+              <option value="293.66">Re 4 — 294 Hz</option>
+              <option value="329.63">Mi 4 — 330 Hz</option>
+              <option value="349.23">Fa 4 — 349 Hz</option>
+              <option value="392">Sol 4 — 392 Hz</option>
+              <option value="440">La 4 — 440 Hz</option>
+              <option value="493.88">Si 4 — 494 Hz</option>
+              <option value="523.25">Do 5 — 523 Hz</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="generator-actions">
+          <p class="playback-note" id="playback-status" aria-live="polite">Listo para reproducir</p>
+          <button class="play-button" id="play-tone" type="button" aria-pressed="false">
+            <svg class="play-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3.8v12.4L16 10 5 3.8Z" /></svg>
+            <span>Reproducir tono</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="robot panel" aria-labelledby="robot-title">
+        <div class="section-heading robot-heading">
+          <div>
+            <p class="eyebrow">CONTROL DIRECCIONAL</p>
+            <h2 id="robot-title">Mueve tu robot</h2>
+          </div>
+          <span class="robot-icon" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M8 13h16l2 13H6l2-13Z" />
+              <path d="M12 13V9a4 4 0 0 1 8 0v4M11 19h.01M21 19h.01M13 23h6" />
+              <path d="M3 17v6M29 17v6" />
+            </svg>
+          </span>
+        </div>
+        <p class="robot-description">Cada botón transmite el tono asignado a ese movimiento.</p>
+
+        <div class="robot-controls">
+          <div class="dpad" role="group" aria-label="Controles direccionales del robot">
+            <button class="direction-button dpad-up" type="button" data-command="forward" aria-label="Adelante, 650 Hz" title="Adelante · 650 Hz">
+              <span class="direction-arrow arrow-up" aria-hidden="true"></span>
+            </button>
+            <button class="direction-button dpad-left" type="button" data-command="left" aria-label="Girar a la izquierda, 1250 Hz" title="Izquierda · 1250 Hz">
+              <span class="direction-arrow arrow-left" aria-hidden="true"></span>
+            </button>
+            <span class="dpad-center" aria-hidden="true"></span>
+            <button class="direction-button dpad-right" type="button" data-command="right" aria-label="Girar a la derecha, 1550 Hz" title="Derecha · 1550 Hz">
+              <span class="direction-arrow arrow-right" aria-hidden="true"></span>
+            </button>
+            <button class="direction-button dpad-down" type="button" data-command="backward" aria-label="Atrás, 950 Hz" title="Atrás · 950 Hz">
+              <span class="direction-arrow arrow-down" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="command-legend" aria-label="Frecuencias de movimiento">
+            <div class="command-legend-item"><span class="legend-arrow">↑</span><span>Adelante</span><strong>650 Hz</strong></div>
+            <div class="command-legend-item"><span class="legend-arrow">↓</span><span>Atrás</span><strong>950 Hz</strong></div>
+            <div class="command-legend-item"><span class="legend-arrow">←</span><span>Izquierda</span><strong>1250 Hz</strong></div>
+            <div class="command-legend-item"><span class="legend-arrow">→</span><span>Derecha</span><strong>1550 Hz</strong></div>
+          </div>
+        </div>
+        <div class="command-status" id="command-status" aria-live="polite">
+          <span class="command-status-dot" aria-hidden="true"></span>
+          <span>Esperando un comando</span>
+        </div>
+        <p class="compatibility-note">
+          Usa las teclas W, A, S y D o toca la cruceta. El robot necesita un receptor de tonos compatible.
+        </p>
+      </section>
+
+      <footer class="footer">
+        <span class="footer-mark" aria-hidden="true">♪</span>
+        <span>Hecho para experimentar con sonido y movimiento.</span>
+      </footer>
+    </main>
+  </body>
+</html>
